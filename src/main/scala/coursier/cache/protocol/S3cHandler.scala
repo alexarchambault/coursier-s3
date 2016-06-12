@@ -26,6 +26,7 @@ class S3cHandler extends URLStreamHandler {
   override def openConnection(url: URL): URLConnection = {
     new URLConnection(url) {
       override def getInputStream: InputStream = {
+
         val endpoint = Option(url.getPort).filter(_ > 0).map(p => s"${url.getHost}:$p").getOrElse(url.getHost)
         S3Client.setEndpoint(endpoint)
 

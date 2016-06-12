@@ -9,6 +9,7 @@ import awscala.s3._
 import com.amazonaws.services.s3.S3ClientOptions
 import com.amazonaws.services.s3.model.GetObjectRequest
 import com.amazonaws.util.StringInputStream
+import com.amazonaws.{ClientConfiguration, Protocol}
 
 import scala.collection.breakOut
 import scala.io.{Codec, Source}
@@ -17,7 +18,7 @@ import scala.util.{Properties, Try}
 
 object S3Client {
 
-  def instance: S3 = {
+  val instance: S3 = {
     val cl = readFromEnv
       .orElse(readFromFile(Paths.get("").toAbsolutePath))
       .orElse(readFromFile(Paths.get(Properties.userHome)))
@@ -69,7 +70,13 @@ object S3Client {
         .map(awscala.Region.apply)
         .getOrElse(awscala.Region.EU_WEST_1)
 
-      S3(Credentials(accessKey, secretKey))(region)
+      val protocol = sys.env.get("AWS_DEFAULT_PROTOCOL")
+        .map(Protocol.valueOf)
+        .getOrElse(Protocol.HTTPS)
+
+      val config = new ClientConfiguration().withProtocol(protocol)
+
+      S3(config, Credentials(accessKey, secretKey))(region)
     }
   }
 
@@ -104,7 +111,14 @@ object S3Client {
           val region = credentials.get("region")
             .map(awscala.Region.apply)
             .getOrElse(awscala.Region.EU_WEST_1)
-          S3(Credentials(accessKey, secretKey))(region)
+
+          val protocol = credentials.get("protocol")
+            .map(Protocol.valueOf)
+            .getOrElse(Protocol.HTTPS)
+
+          val config = new ClientConfiguration().withProtocol(protocol)
+
+          S3(config, Credentials(accessKey, secretKey))(region)
         }
       }
     } catch {
