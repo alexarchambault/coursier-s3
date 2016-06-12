@@ -1,0 +1,6 @@
+test:
+  override:
+    - nvm install 6
+    - npm install -g dev-s3-server
+  post:
+    - ./scripts/test.sh
