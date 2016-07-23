@@ -4,7 +4,7 @@ organization := "rtfpessoa"
 
 name := """coursier-s3"""
 
-version := "0.1.0"
+version := "1.0.0-alpha.1"
 
 scalaVersion := "2.10.6"
 
@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
 
 testFrameworks += new TestFramework("utest.runner.Framework")
 
-licenses +=("MIT", url("http://opensource.org/licenses/MIT"))
+licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
 bintrayPackageLabels := Seq("coursier", "sbt", "s3", "aws")
 

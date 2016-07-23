@@ -58,16 +58,14 @@ object S3cHandlerTest extends TestSuite {
         val is = s3cHandler.openConnection(directoryUrl).getInputStream
 
         val htmlBody =
-          s"""
-             |<html>
-             |<head>
-             |</head>
-             |<body>
-             |<pre><a href=":directory/file2.jar">directory/file2.jar</a></pre>
-             |<pre><a href=":directory/file3.jar">directory/file3.jar</a></pre>
-             |</body>
-             |</html>
-    """.stripMargin.split("\n").toList
+          s"""<html>
+              |<head>
+              |</head>
+              |<body>
+              |<pre><a href=":file2.jar">file2.jar</a></pre>
+              |<pre><a href=":file3.jar">file3.jar</a></pre>
+              |</body>
+              |</html>""".stripMargin.split("\n").toList
 
         val lines = Source.fromInputStream(is).getLines().toList
 

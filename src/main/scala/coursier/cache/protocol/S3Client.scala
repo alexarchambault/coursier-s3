@@ -37,25 +37,31 @@ object S3Client {
 
   def prepareDirectoryList(bucket: Bucket, key: String): InputStream = {
     val files = instance.ls(bucket, key).map {
-      case Left(directoryPrefix) => directoryPrefix
-      case Right(s3ObjectSummary) => s3ObjectSummary.getKey
+      case Left(directoryPrefix) =>
+        s"${getLastSubPath(directoryPrefix)}/"
+      case Right(s3ObjectSummary) =>
+        getLastSubPath(s3ObjectSummary.getKey)
     }.map { key =>
       s"""<pre><a href=":$key">$key</a></pre>"""
     }.mkString("\n")
 
     val htmlBody =
-      s"""
-         |<html>
-         |<head>
-         |</head>
-         |<body>
-         |$files
-         |</body>
-         |</html>
-    """.stripMargin
+      s"""<html>
+          |<head>
+          |</head>
+          |<body>
+          |$files
+          |</body>
+          |</html>""".stripMargin
 
     new StringInputStream(htmlBody)
   }
+
+  private def getLastSubPath(key: String): String = key
+    .split("/")
+    .map(_.trim)
+    .filter(_.nonEmpty)
+    .last
 
   def prepareFileContents(bucket: Bucket, key: String): InputStream = {
     S3Object(bucket, instance.getObject(new GetObjectRequest(bucket.name, key))).content
