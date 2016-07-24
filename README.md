@@ -37,8 +37,8 @@ region = EU_WEST_1
 
     ```sbt
     resolvers += Resolver.bintrayRepo("rtfpessoa", "maven")
-    
-    libraryDependencies += "rtfpessoa" %% "coursier-s3" % "0.1.0"
+
+    libraryDependencies += "rtfpessoa" %% "coursier-s3" % "1.0.0-alpha.1"
     ```
 
 2. Setup support for `s3c` urls
