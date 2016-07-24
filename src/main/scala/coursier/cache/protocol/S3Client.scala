@@ -13,7 +13,6 @@ import com.amazonaws.{ClientConfiguration, Protocol}
 
 import scala.collection.breakOut
 import scala.io.{Codec, Source}
-import scala.util.control.NonFatal
 import scala.util.{Properties, Try}
 
 object S3Client {
@@ -24,7 +23,11 @@ object S3Client {
       .orElse(readFromFile(Paths.get(Properties.userHome)))
       .orElse(readFromFile(Paths.get(Properties.userHome).resolve(".sbt")))
       .orElse(readFromFile(Paths.get(Properties.userHome).resolve(".coursier")))
-      .getOrElse(S3()(awscala.Region.EU_WEST_1))
+      .getOrElse(S3()(
+        sys.env.get("AWS_DEFAULT_REGION")
+          .map(awscala.Region.apply)
+          .getOrElse(awscala.Region.EU_WEST_1)
+      ))
 
     cl.setS3ClientOptions(S3ClientOptions.builder.setPathStyleAccess(true).build())
 
@@ -36,32 +39,33 @@ object S3Client {
   }
 
   def prepareDirectoryList(bucket: Bucket, key: String): InputStream = {
-    val files = instance.ls(bucket, key).map {
-      case Left(directoryPrefix) =>
-        s"${getLastSubPath(directoryPrefix)}/"
-      case Right(s3ObjectSummary) =>
-        getLastSubPath(s3ObjectSummary.getKey)
-    }.map { key =>
-      s"""<pre><a href=":$key">$key</a></pre>"""
-    }.mkString("\n")
+    val files = for {
+      files <- instance.ls(bucket, key)
+      fileKey <- files.fold({
+        directoryPrefix => getLastSubPath(directoryPrefix).map(_ + "/")
+      }, {
+        s3ObjectSummary => getLastSubPath(s3ObjectSummary.getKey)
+      })
+    } yield
+      s"""<pre><a href=":$fileKey">$fileKey</a></pre>"""
 
     val htmlBody =
       s"""<html>
           |<head>
           |</head>
           |<body>
-          |$files
+          |${files.mkString("\n")}
           |</body>
           |</html>""".stripMargin
 
     new StringInputStream(htmlBody)
   }
 
-  private def getLastSubPath(key: String): String = key
+  private def getLastSubPath(key: String): Option[String] = key
     .split("/")
     .map(_.trim)
     .filter(_.nonEmpty)
-    .last
+    .lastOption
 
   def prepareFileContents(bucket: Bucket, key: String): InputStream = {
     S3Object(bucket, instance.getObject(new GetObjectRequest(bucket.name, key))).content
@@ -95,7 +99,7 @@ object S3Client {
 
     val sourceOpt = Try(Source.fromFile(file)).toOption
 
-    try {
+    val res = Try {
       sourceOpt.flatMap { f =>
         val cleanLines = f.getLines().toList
           .map(_.trim)
@@ -105,8 +109,8 @@ object S3Client {
           cleanLines.flatMap { l =>
             val values = l.split("=").map(_.trim)
             for {
-              key <- values.lift(0)
-              value <- values.lift(1)
+              key <- values lift 0
+              value <- values lift 1
             } yield key -> value
           }(breakOut)
 
@@ -127,13 +131,12 @@ object S3Client {
           S3(config, Credentials(accessKey, secretKey))(region)
         }
       }
-    } catch {
-      case NonFatal(e) =>
-        None
-    } finally {
-      sourceOpt.foreach(_.close())
-    }
+    }.toOption.flatten
 
+    // Close the resources
+    sourceOpt.foreach(_.close())
+
+    res
   }
 
 }

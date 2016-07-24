@@ -5,6 +5,8 @@ import java.net._
 
 import awscala.s3._
 
+import scala.util.{Failure, Success, Try}
+
 /*
  * To avoid collision with `fm-sbt-s3-resolver` we added a different URL
  * format starting with `s3c` (S3 coursier).
@@ -31,26 +33,30 @@ class S3cHandler extends URLStreamHandler {
         S3Client.setEndpoint(endpoint)
 
         val fullPath = url.getPath
-        val subPaths = fullPath.stripPrefix("/").split("/")
+        val subPaths = fullPath.split("/").map(_.trim).filter(_.nonEmpty)
 
-        // Bucket
-        val bucketName = subPaths.head
+        subPaths.headOption.fold[InputStream] {
+          Console.err.println(s"Failed to get bucket name in (url:${url.toString})")
+          null
+        } { bucketName =>
+          // Bucket
+          val bucket = Bucket(bucketName)
 
-        // Key
-        val key = subPaths.tail.mkString("/")
+          // Key
+          val key = subPaths.tail.mkString("/")
 
-        val bucket = Bucket(bucketName)
-
-        try {
-          if (fullPath.endsWith("/")) {
-            S3Client.prepareDirectoryList(bucket, s"$key/")
-          } else {
-            S3Client.prepareFileContents(bucket, key)
+          Try {
+            if (fullPath.endsWith("/")) {
+              S3Client.prepareDirectoryList(bucket, s"$key/")
+            } else {
+              S3Client.prepareFileContents(bucket, key)
+            }
+          } match {
+            case Success(f) => f
+            case Failure(e) =>
+              Console.err.println(s"Failed to prepare (key:$key): ${e.getMessage}")
+              null
           }
-        } catch {
-          case e: Throwable =>
-            e.printStackTrace()
-            throw e
         }
 
       }
