@@ -118,9 +118,7 @@ bin/
 .eclipse
 /logs/
 /modules
-/project/project
-/project/target
-/target
+target/
 tmp/
 test-result
 server.pid
